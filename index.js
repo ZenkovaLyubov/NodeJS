@@ -1,59 +1,69 @@
+import http from 'http'
 import fs from 'fs'
-import inquirer from 'inquirer'
 import path from 'path'
-import readline from 'readline'
+import { Transform } from 'stream'
 
-const rl = readline.createInterface(process.stdin, process.stdout)
-rl.question('Укажите каталог: ', (dirname) => {
-  const dir = dirname ? dirname : process.cwd()
-  const files = fs.readdirSync(dir)
+const host = 'localhost'
+const port = 3000
 
-  requirerPrompt(dir, files)
-})
+let filesList = []
 
-const contentIncluds = (fileContent, strname) => {
-  if (fileContent.includes(strname)) {
-    console.log('Строка есть в файле')
-  } else {
-    console.log('Строки нет в файле')
+const links = (list, curUrl) => {
+  if (curUrl.endsWith('/')) curUrl = curUrl.substring(0, curUrl.length - 1)
+  let link = ''
+  for (const i of list) {
+    link += `<li><a href="${curUrl}/${i}">${i}</a></li>`
   }
+  return link
 }
 
-const requirerPrompt = (dir, files = []) => {
-  inquirer
-    .prompt([
-      {
-        name: 'filepath',
-        type: 'list',
-        message: 'Выберите файл: ',
-        choices: files,
-      },
-    ])
-    .then((answer) => {
-      if (fs.lstatSync(path.join(dir, answer.filepath)).isFile()) {
-        const fileContent = fs
-          .readFileSync(path.join(dir, answer.filepath))
-          .toString()
-        console.log(fileContent)
-        rl.close()
+http
+  .createServer((request, response) => {
+    if (request.method === 'GET') {
+      const url = request.url.split('?')[0]
+      const curPath = path.join(process.cwd(), url)
 
-        if (fileContent.length) {
-          const rl1 = readline.createInterface(process.stdin, process.stdout)
-          rl1.question('Укажите строку для поиска: ', (strname) => {
-            contentIncluds(fileContent, strname)
-            rl1.close()
-          })
-        } else {
-          console.log('Файл пуст')
-        }
-      } else if (fs.lstatSync(path.join(dir, answer.filepath)).isDirectory()) {
-        const dirContent = fs.readdirSync(path.join(dir, answer.filepath))
+      fs.stat(curPath, (err, stats) => {
+        if (!err) {
+          if (stats.isFile(curPath)) {
+            const rs = fs.createReadStream(curPath, 'utf-8')
 
-        if (dirContent.length) {
-          requirerPrompt(path.join(dir, answer.filepath), dirContent)
+            const ts = new Transform({
+              transform(chunk, encoding, callback) {
+                this.push('<a href="..">..</a>' + '\n' + chunk.toString())
+
+                callback()
+              },
+            })
+            rs.pipe(ts).pipe(response)
+          } else {
+            filesList = []
+            const ds = fs.readdir(curPath, 'utf-8', (err, files) => {
+              filesList = files
+              if (url !== '/') filesList.unshift('..')
+            })
+
+            const filePath = path.join(process.cwd(), './index.html')
+            const rs = fs.createReadStream(filePath)
+            const ts = new Transform({
+              transform(chunk, encoding, callback) {
+                const li = links(filesList, url)
+
+                this.push(chunk.toString().replace('#links#', li))
+
+                callback()
+              },
+            })
+
+            rs.pipe(ts).pipe(response)
+          }
         } else {
-          console.log('Каталог пуст')
+          response.end('Error')
         }
-      }
-    })
-}
+      })
+    }
+  })
+
+  .listen(port, host, () =>
+    console.log(`Сервер запущен http://${host}:${port}`)
+  )
