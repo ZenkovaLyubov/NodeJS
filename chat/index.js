@@ -50,6 +50,7 @@ socket.on('connection', function (socket) {
     }
   })
   socket.on('msg', function (data) {
+    // socket.broadcast.emit('newmsg', data)
     socket.broadcast.emit('newmsg', data)
   })
 })

@@ -7,12 +7,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 </head>
+<script src = "/socket.io/socket.io.js"></script>
 
 <body>
     <h1>Содержимое директории</h1>
+    <h2 class="heading"></h2>
    <ul>
     #links#
 </ul>
 </body>
+
+<script>
+    const socket = io();
+    const headingContent = document.querySelector('.heading');
+    
+    socket.on('countUsers',function(data) {
+    console.log(data.description)
+        headingContent.insertAdjacentHTML('beforeend', data.description)
+    //  document.write(data.description);
+    });
+</script>
 
 </html>
