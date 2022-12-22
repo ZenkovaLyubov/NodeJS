@@ -1,0 +1,74 @@
+<html>
+    <script src="/socket.io/socket.io.js"></script>
+    <head>
+        <title>Socket App</title>
+    </head>
+    <body>
+        <div id="messages"></div>
+        <div id = "error-container"></div>
+        <input id = "name" type = "text" name = "name" value = "" 
+            placeholder = "Enter your name!">
+        <button type = "button" name = "button" onclick = "setUsername()">
+            Let me chat!
+        </button>
+    </body>
+
+    <script type="text/javascript">
+
+        const socket = io('localhost:3000');
+
+        function setUsername() {
+            socket.emit('setUsername', document.getElementById('name').value);
+        };
+
+        let user=''
+
+        socket.on('userExists', function(data) {
+            document.getElementById('error-container').innerHTML = data;
+        })
+
+        socket.on('userSet', function(data) {
+            user = data.username;
+                document.body.innerHTML = `<div id="messages"></div><p>Your name: ${user}</p><input type = "text" id = "enterMessage">
+                <button type = "button" id = "send" name = "button" onclick = "sendMessage()">Send</button>
+                <div id = "message-container"></div>`;
+        });
+
+        function sendMessage() {
+            const msg = document.getElementById('enterMessage').value;
+            document.getElementById('enterMessage').value=''
+            if(msg) {
+            socket.emit('msg', {message: msg, user: user});
+            }
+        }
+
+        socket.on('newmsg', function(data) {
+            if(user) {
+            
+                document.getElementById('message-container').innerHTML += '<div><b>' + 
+                    data.user + '</b>: ' + data.message + '</div>'
+            }
+        })
+
+        const addMessage = (msg) => {
+            const msgSpan = document.createElement('span').innerHTML = msg;
+            document.getElementById('messages').append(msgSpan);
+            document.getElementById('messages').append(document.createElement('br'))
+        }
+
+        socket.on('connect', function() {
+            console.log('Successful connected to server')
+        })
+
+        // socket.on('server_msg', function (data) {
+        //     addMessage(data.msg);
+        // })
+        socket.on('newConnEvent', function (data) {
+            addMessage(data.msg);
+        })
+        socket.on('newDisconnEvent', function (data) {
+            addMessage(data.msg);
+        })
+        
+    </script>
+</html>
