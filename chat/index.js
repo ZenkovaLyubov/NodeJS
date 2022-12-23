@@ -15,6 +15,7 @@ const app = http.createServer((request, response) => {
     })
     request.on('end', () => {
       const parsedData = JSON.parse(data)
+      console.log(parsedData)
       response.writeHead(200, { 'Content-Type': 'json' })
       response.end(data)
     })
